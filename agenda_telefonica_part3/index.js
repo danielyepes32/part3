@@ -1,9 +1,30 @@
 const express = require('express')
 const app = express()
-
+const mongoose = require('mongoose')
 
 const cors = require('cors')
 var morgan = require('morgan')
+
+if (process.argv.length<3) {
+  console.log('give password as argument')
+  process.exit(1)
+}
+
+const password = process.argv[2]
+
+const url =
+  `mongodb+srv://fullstack:${password}@appmongodb.katevlp.mongodb.net/phoneAgency?retryWrites=true&w=majority&appName=AppMongoDB`
+
+mongoose.set('strictQuery',false)
+mongoose.connect(url)
+
+const personSchema = new mongoose.Schema({
+    id: Number,
+    name: String,
+    number: String,
+})
+
+const Person = mongoose.model('Persons', personSchema)
 
 // Definir formato de token personalizado para Morgan
 morgan.token('description', function(req, res) {
@@ -58,7 +79,9 @@ app.get('/info', (request, response) => {
 
 //obtener todas las notas
 app.get('/api/persons', (request, response) => {
-  response.json(persons)
+  Person.find({}).select('-_id').then(persons => {
+    response.json(persons)
+    })
 })
 
 //obtener una sola nota
