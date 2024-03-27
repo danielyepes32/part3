@@ -8,7 +8,7 @@ var morgan = require('morgan')
 
 const password = process.argv[2]
 
-const url = MONGODB_URI
+const url = process.env.MONGODB_URI
 
 mongoose.set('strictQuery',false)
 mongoose.connect(url)
