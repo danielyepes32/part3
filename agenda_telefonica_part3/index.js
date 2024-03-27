@@ -1,3 +1,4 @@
+require('dotenv').config()
 const express = require('express')
 const app = express()
 const mongoose = require('mongoose')
@@ -5,15 +6,9 @@ const mongoose = require('mongoose')
 const cors = require('cors')
 var morgan = require('morgan')
 
-if (process.argv.length<3) {
-  console.log('give password as argument')
-  process.exit(1)
-}
-
 const password = process.argv[2]
 
-const url =
-  `mongodb+srv://fullstack:${password}@appmongodb.katevlp.mongodb.net/phoneAgency?retryWrites=true&w=majority&appName=AppMongoDB`
+const url = MONGODB_URI
 
 mongoose.set('strictQuery',false)
 mongoose.connect(url)
