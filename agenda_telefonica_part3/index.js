@@ -72,19 +72,13 @@ app.get('/api/persons/:id', (request, response, next) => {
   }
   
 //publicar una nota
-app.post('/api/persons', (request, response) => {
+app.post('/api/persons', (request, response, next) => {
     const body = request.body
-  
-    if (!body.name || !body.number) {
-      return response.status(400).json({ 
-        error: 'content missing' 
-      })
-    }
 
     Person.find({ name: body.name }).then(persons => {
       console.log(persons);
       if (persons.length > 0) { // Verifica si se encontraron personas con el mismo nombre
-        console.log(persons);
+        console.log(persons)
         return response.status(400).json({ 
           error: 'name must be unique' 
         });
@@ -97,7 +91,8 @@ app.post('/api/persons', (request, response) => {
       
         person.save().then(savedPerson => {
           response.json(savedPerson)
-        })}
+        }).catch(error => next(error))
+      }
     })
   
 
@@ -113,18 +108,17 @@ app.delete('/api/persons/:id', (request, response, next) => {
   }) 
   
 app.put('/api/persons/:id', (request, response, next) => {
-    const body = request.body
-  
-    const person = {
-      name: body.name,
-      number: body.number,
-    }
-  
-    Person.findByIdAndUpdate(request.params.id, person, { new: person.number })
-      .then(updatedPerson => {
-        response.json(updatedPerson)
-      })
-      .catch(error => next(error))
+  const { name, number } = request.body
+
+  Person.findByIdAndUpdate(
+    request.params.id, 
+    { name, number },
+    { new: number, runValidators: true, context: 'query' }
+  ) 
+    .then(updatedPerson => {
+      response.json(updatedPerson)
+    })
+    .catch(error => next(error))
 })
   
 //asignacion de puerto y escucha
@@ -133,3 +127,24 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
 })
 
+const unknownEndpoint = (request, response) => {
+  response.status(404).send({ error: 'unknown endpoint' })
+}
+
+// controlador de solicitudes con endpoint desconocido
+app.use(unknownEndpoint)
+
+const errorHandler = (error, request, response, next) => {
+  console.error(error.message)
+
+  if (error.name === 'CastError') {
+    return response.status(400).send({ error: 'malformatted id' })
+  } else if (error.name === 'ValidationError') {
+    return response.status(400).json({ error: error.message })
+  } 
+
+  next(error)
+}
+
+// este debe ser el último middleware cargado
+app.use(errorHandler)
