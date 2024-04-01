@@ -21,63 +21,47 @@ morgan.token('description', function(req, res) {
   app.use(express.json())
   app.use(express.static('dist'))
 
-let persons = [
-
-    { 
-        "id": 1,
-        "name": "Arto Hellas", 
-        "number": "040-123456"
-      },
-      { 
-        "id": 2,
-        "name": "Ada Lovelace", 
-        "number": "39-44-5323523"
-      },
-      { 
-        "id": 3,
-        "name": "Dan Abramov", 
-        "number": "12-43-234345"
-      },
-      { 
-        "id": 4,
-        "name": "Mary Poppendieck", 
-        "number": "39-23-6423122"
-      }
-  ]
-
-
 app.get('/', (request, response) => {
   response.send('<h1>Hello World!</h1>')
 })
 
 //informacion
 app.get('/info', (request, response) => {
-    const fecha = new Date()
-    response.send('<p>Phonebook has info for '+ persons.length + ' people</p>'
+
+  const fecha = new Date()
+
+  Person.countDocuments({})
+  .then(count => {
+    response.send('<p>Phonebook has info for '+ count + ' people</p>'
     +'<p>' + fecha +'</p>')
-    
   })
+  .catch(error => {
+    response.status(400).json({ 
+      error: 'Error obteniendo la cantidad de datos '+ error 
+  }) 
+  })
+})
 
 //obtener todas las notas
 app.get('/api/persons', (request, response) => {
-  Person.find({}).select('-_id').then(persons => {
+  Person.find({}).then(persons => {
     response.json(persons)
     })
 })
 
 //obtener una sola nota
-app.get('/api/persons/:id', (request, response) => {
+app.get('/api/persons/:id', (request, response, next) => {
 
-    const id = Number(request.params.id)
-    const person = persons.find(person => person.id === id)
-    
+  Person.findById(request.params.id)
+  .then(person => {
     if (person) {
-        response.json(person)
-      } else {
-        response.status(404).end()
-      }
-
+      response.json(person)
+    } else {
+      response.status(404).end()
+    }
   })
+  .catch(error => next(error))
+})
 
 //funcion para generar id
   const generateId = () => {
@@ -97,29 +81,51 @@ app.post('/api/persons', (request, response) => {
       })
     }
 
-    if(persons.find(person=>person.name == body.name)){
+    Person.find({ name: body.name }).then(persons => {
+      console.log(persons);
+      if (persons.length > 0) { // Verifica si se encontraron personas con el mismo nombre
+        console.log(persons);
         return response.status(400).json({ 
-            error: 'name must be unique' 
+          error: 'name must be unique' 
+        });
+      } else {
+
+        const person = new Person({
+          name: body.name,
+          number: body.number,
         })
-    }
+      
+        person.save().then(savedPerson => {
+          response.json(savedPerson)
+        })}
+    })
   
-    const person = {
-      id: generateId(),
-      name: body.name,
-      number: body.number
-    }
-  
-    persons = persons.concat(person)
-    response.json(person)
+
   })
 
 //eliminar una nota
-app.delete('/api/persons/:id', (request, response) => {
-  const id = Number(request.params.id)
-  persons = persons.filter(person => person.id !== id)
+app.delete('/api/persons/:id', (request, response, next) => {
+  Person.findByIdAndDelete(request.params.id)
+    .then(result => {
+      response.status(204).end()
+    })
+    .catch(error => next(error))
+  }) 
   
-  response.status(204).end()
-    })  
+app.put('/api/persons/:id', (request, response, next) => {
+    const body = request.body
+  
+    const person = {
+      name: body.name,
+      number: body.number,
+    }
+  
+    Person.findByIdAndUpdate(request.params.id, person, { new: person.number })
+      .then(updatedPerson => {
+        response.json(updatedPerson)
+      })
+      .catch(error => next(error))
+})
   
 //asignacion de puerto y escucha
 const PORT = process.env.PORT || 3001
